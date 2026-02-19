@@ -5,6 +5,7 @@ FastAPI application with background polling worker for NewsAPI integration.
 import asyncio
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Any, Optional
 
@@ -275,12 +276,17 @@ async def process_articles(response: NewsAPIResponse) -> tuple[int, int]:
             new_articles += 1
             
             # Send to Kinesis
-            if kinesis_conn and await send_to_kinesis(kinesis_article):
+            kinesis_result = await send_to_kinesis(kinesis_article)
+            logger.debug(f"Kinesis send result for {kinesis_article.article_id}: {kinesis_result}")
+            
+            if kinesis_result:
                 sent_to_kinesis += 1
                 
                 # Mark as processed in Redis
                 if redis_conn:
                     await mark_article_processed(redis_conn, kinesis_article.article_id)
+            else:
+                logger.warning(f"Failed to send article {kinesis_article.article_id} to Kinesis")
             
         except Exception as e:
             logger.error(f"Error processing article: {e}")

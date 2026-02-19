@@ -5,8 +5,6 @@ services:
     container_name: aurora-redis
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -47,8 +45,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: aurora-news-api
-    volumes:
-      - ./app:/app/app
     ports:
       - "8000:8000"
     environment:
