@@ -1,0 +1,69 @@
+services:
+  # Redis for deduplication and caching
+  redis:
+    image: redis:7-alpine
+    container_name: aurora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aurora-network
+
+  # FastAPI News Ingestion Service
+  news-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aurora-news-api
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8000:8000"
+    environment:
+      # NewsAPI Configuration
+      - ENV=${ENV:-production}
+      - NEWS_API_KEY=${NEWS_API_KEY}
+      - NEWS_API_URL=https://newsapi.org/v2/everything
+      - SEARCH_QUERY=${SEARCH_QUERY:-technology}
+      - SEARCH_LANGUAGE=${SEARCH_LANGUAGE:-en}
+      - SORT_BY=${SORT_BY:-publishedAt}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-300}
+      - PAGE_SIZE=${PAGE_SIZE:-10}
+      
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_TTL_SECONDS=604800
+      
+      # AWS Kinesis Configuration
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - KINESIS_STREAM_NAME=${KINESIS_STREAM_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aurora-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import httpx; httpx.get('http://localhost:8000/health', timeout=5.0)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 
+    
+
+networks:
+  aurora-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

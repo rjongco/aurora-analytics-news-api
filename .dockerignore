@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore 
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build
+build/
+dist/
+coverage/
+
+# Tests
+test/
+tests/
+
+# Documentation
+README.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# OS
+Thumbs.db
